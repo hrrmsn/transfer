@@ -6,7 +6,7 @@ package client
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
-	"wheely/test/delivery/internal/restapi/cars/client/operations"
+	"wheely/delivery/internal/cars/client/operations"
 
 	"github.com/go-openapi/runtime"
 	httptransport "github.com/go-openapi/runtime/client"
