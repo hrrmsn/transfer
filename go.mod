@@ -1,4 +1,4 @@
-module wheely/delivery
+module wheely/test
 
 go 1.14
 

@@ -12,7 +12,7 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
 
-	"wheely/delivery/internal/cars/models"
+	"wheely/test/internal/cars/models"
 )
 
 // GetCarsReader is a Reader for the GetCars structure.

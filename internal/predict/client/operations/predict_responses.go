@@ -16,7 +16,7 @@ import (
 	"github.com/go-openapi/swag"
 	"github.com/go-openapi/validate"
 
-	"wheely/delivery/internal/predict/models"
+	"wheely/test/internal/predict/models"
 )
 
 // PredictReader is a Reader for the Predict structure.
