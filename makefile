@@ -1,5 +1,5 @@
 build:
-	go build cmd/transfer-server/main.go
+	go build cmd/transfer/main.go
 
 run:
 	./main -port 8081

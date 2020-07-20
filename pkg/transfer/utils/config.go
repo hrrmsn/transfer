@@ -1,4 +1,4 @@
-package config
+package utils
 
 import (
 	"time"
@@ -20,7 +20,7 @@ type CarsConfig struct {
 	Host     string        `envconfig:"CARS_HOST" default:"dev-api.wheely.com"`
 	Schemes  []string      `envconfig:"CARS_SCHEMES" default:"https"`
 	Timeout  time.Duration `envconfig:"CARS_TIMEOUT" default:"30s"`
-	Limit    int           `envconfig:"CARS_LIMIT" default:10`
+	Limit    int           `envconfig:"CARS_LIMIT" default:"10"`
 }
 
 type PredictConfig struct {
@@ -30,17 +30,7 @@ type PredictConfig struct {
 	Timeout  time.Duration `envconfig:"PREDICT_TIMEOUT" default:"30s"`
 }
 
-func New() (*Config, error) {
-	// var carsCfg CarsConfig
-	// if err := envconfig.Process("cars config", &carsCfg); err != nil {
-	// 	return nil, err
-	// }
-	//
-	// var predictCfg PredictConfig
-	// if err := envconfig.Process("cars config", &predictCfg); err != nil {
-	// 	return nil, err
-	// }
-
+func NewConfig() (*Config, error) {
 	var cfg Config
 	if err := envconfig.Process("config", &cfg); err != nil {
 		return nil, err
