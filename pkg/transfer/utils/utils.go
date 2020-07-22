@@ -2,14 +2,13 @@ package utils
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 )
 
 func Min(ints []int64) (int64, error) {
 	if len(ints) == 0 {
-		return -1, fmt.Errorf("empty input array")
+		return -1, fmt.Errorf("Empty input array")
 	}
 
 	var result = ints[0]
@@ -21,9 +20,15 @@ func Min(ints []int64) (int64, error) {
 	return result, nil
 }
 
-func HandleError(textError string, statusCode int, err error, w http.ResponseWriter) {
-	log.Fatalf("%s: %s\n", textError, err.Error())
+func HandleError(w http.ResponseWriter, err error, statusCode int) {
+	if err == nil {
+		err = fmt.Errorf("Unknown error")
+	}
 
 	w.WriteHeader(statusCode)
-	w.Write([]byte(`{"error": "` + strings.ToLower(textError) + `"}`))
+	w.Write([]byte(`{"error": "` + strings.ToLower(err.Error()) + `"}`))
+}
+
+func WrapError(text string, err error) error {
+	return fmt.Errorf("%s: %s", text, err.Error())
 }

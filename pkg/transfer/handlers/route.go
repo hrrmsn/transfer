@@ -2,18 +2,17 @@ package handlers
 
 import (
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 
+	"github.com/go-openapi/strfmt"
+
+	cars_ops "wheely/test/internal/cars/client/operations"
+	predict_ops "wheely/test/internal/predict/client/operations"
+	"wheely/test/internal/predict/models"
 	"wheely/test/pkg/transfer/clients/cars"
 	"wheely/test/pkg/transfer/clients/predict"
-
-	"wheely/test/internal/predict/models"
 	"wheely/test/pkg/transfer/utils"
-
-	"github.com/go-openapi/strfmt"
 )
 
 type Route struct {
@@ -32,55 +31,52 @@ func NewRoute(cfg *utils.Config) *Route {
 	}
 }
 
-func readBody(body io.ReadCloser) (*models.Position, error) {
-	defer body.Close()
+func (r *Route) GetCars(pos *models.Position) (*cars_ops.GetCarsOK, error) {
+	if r.CarsClient.Unhealthy() {
+		return nil, fmt.Errorf("Cars service is unavailable")
+	}
 
-	resp, err := ioutil.ReadAll(body)
+	carsData, err := r.CarsClient.GetCars(r.Config, pos)
 	if err != nil {
-		return nil, err
+		return nil, utils.WrapError("Error when receiving data from cars service", err)
 	}
 
-	pos := &models.Position{}
-	if err = pos.UnmarshalBinary(resp); err != nil {
-		return nil, err
+	if err = r.CarsClient.Validate(carsData); err != nil {
+		return nil, utils.WrapError("Cars data is invalid", err)
 	}
 
-	return pos, nil
+	return carsData, nil
 }
 
-func readPos(request *http.Request, formats strfmt.Registry) (*models.Position, error) {
-	pos, err := readBody(request.Body)
+func (r *Route) GetPredict(pos *models.Position, carsData *cars_ops.GetCarsOK) (*predict_ops.PredictOK, error) {
+	if r.PredictClient.Unhealthy() {
+		return nil, fmt.Errorf("Predict service is unavailable")
+	}
+
+	predictData, err := r.PredictClient.GetPredict(r.Config, pos, carsData)
 	if err != nil {
-		return nil, fmt.Errorf("Error when reading body of POST request: %s", err.Error())
+		return nil, utils.WrapError("Error when receiving data from predict service", err)
 	}
 
-	if err = pos.Validate(formats); err != nil {
-		return nil, fmt.Errorf("Predict position validate error: %s", err.Error())
-	}
-
-	return pos, nil
+	return predictData, nil
 }
 
 func (r *Route) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	pos, err := readPos(req, r.Formats)
 	if err != nil {
-		utils.HandleError("Input data error", http.StatusInternalServerError, err, w)
+		utils.HandleError(w, utils.WrapError("Input data error", err), http.StatusInternalServerError)
 		return
 	}
 
-	if r.CarsClient.Unhealthy() {
-		// take data from cache
-	}
-
-	carsData, err := r.CarsClient.GetCars(r.Config, pos)
+	carsData, err := r.GetCars(pos)
 	if err != nil {
-		utils.HandleError("Error when receiving data from cars service", http.StatusInternalServerError, err, w)
+		utils.HandleError(w, err, http.StatusInternalServerError)
 		return
 	}
 
-	predictData, err := r.PredictClient.GetPredict(r.Config, pos, carsData)
+	predictData, err := r.GetPredict(pos, carsData)
 	if err != nil {
-		utils.HandleError("Error when receiving data from predict service", http.StatusInternalServerError, err, w)
+		utils.HandleError(w, err, http.StatusInternalServerError)
 		return
 	}
 

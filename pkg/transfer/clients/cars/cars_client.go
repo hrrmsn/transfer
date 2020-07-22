@@ -3,12 +3,13 @@ package cars
 import (
 	"strings"
 	"time"
+
+	"github.com/go-openapi/strfmt"
+
 	"wheely/test/internal/cars/client"
 	"wheely/test/internal/cars/client/operations"
 	"wheely/test/internal/predict/models"
 	"wheely/test/pkg/transfer/utils"
-
-	"github.com/go-openapi/strfmt"
 )
 
 type Client struct {
@@ -71,7 +72,7 @@ func (c *Client) health() (*operations.HealthOK, error) {
 
 func (c *Client) Healthy() bool {
 	healthData, err := c.health()
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "unknown error") {
 		return false
 	}
 	return strings.Contains(healthData.Error(), "200") || strings.Contains(healthData.Error(), "healthOK")

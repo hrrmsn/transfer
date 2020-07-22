@@ -1,14 +1,16 @@
 package predict
 
 import (
+	"strings"
 	"time"
+
+	"github.com/go-openapi/strfmt"
+
 	cars_ops "wheely/test/internal/cars/client/operations"
 	"wheely/test/internal/predict/client"
 	predict_ops "wheely/test/internal/predict/client/operations"
 	"wheely/test/internal/predict/models"
 	"wheely/test/pkg/transfer/utils"
-
-	"github.com/go-openapi/strfmt"
 )
 
 type Client struct {
@@ -37,10 +39,9 @@ func (c *Client) GetPredict(
 	carsData *cars_ops.GetCarsOK,
 ) (*predict_ops.PredictOK, error) {
 
-	predictPositions := make([]models.Position, len(carsData.Payload))
-	for i := 0; i < len(predictPositions); i++ {
-		var car = carsData.Payload[i]
-		predictPositions[i] = models.Position{Lat: car.Lat, Lng: car.Lng}
+	predictPositions, err := carsToPositions(carsData, c.Formats)
+	if err != nil {
+		return nil, err
 	}
 
 	positionList := predict_ops.PredictBody{
@@ -61,7 +62,7 @@ func (c *Client) GetPredict(
 	return predictData, nil
 }
 
-func (c *Client) Health() (*predict_ops.HealthOK, error) {
+func (c *Client) health() (*predict_ops.HealthOK, error) {
 	params := &predict_ops.HealthParams{}
 	params.WithTimeout(c.Timeout)
 
@@ -71,4 +72,16 @@ func (c *Client) Health() (*predict_ops.HealthOK, error) {
 	}
 
 	return healthData, nil
+}
+
+func (c *Client) Healthy() bool {
+	healthData, err := c.health()
+	if err != nil && !strings.Contains(err.Error(), "unknown error") {
+		return false
+	}
+	return strings.Contains(healthData.Error(), "200") || strings.Contains(healthData.Error(), "healthOK")
+}
+
+func (c *Client) Unhealthy() bool {
+	return !c.Healthy()
 }
