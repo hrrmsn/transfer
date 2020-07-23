@@ -24,9 +24,7 @@ func HandleError(w http.ResponseWriter, err error, statusCode int) {
 	if err == nil {
 		err = fmt.Errorf("Unknown error")
 	}
-
-	w.WriteHeader(statusCode)
-	w.Write([]byte(`{"error": "` + strings.ToLower(err.Error()) + `"}`))
+	http.Error(w, `{"error": "`+strings.ToLower(err.Error())+`"}`, statusCode)
 }
 
 func WrapError(text string, err error) error {

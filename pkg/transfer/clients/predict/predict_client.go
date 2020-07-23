@@ -13,6 +13,11 @@ import (
 	"wheely/test/pkg/transfer/utils"
 )
 
+type Predictor interface {
+	GetPredict(*utils.Config, *models.Position, *cars_ops.GetCarsOK) (*predict_ops.PredictOK, error)
+	Healthy() bool
+}
+
 type Client struct {
 	*client.PredictService
 
@@ -80,8 +85,4 @@ func (c *Client) Healthy() bool {
 		return false
 	}
 	return strings.Contains(healthData.Error(), "200") || strings.Contains(healthData.Error(), "healthOK")
-}
-
-func (c *Client) Unhealthy() bool {
-	return !c.Healthy()
 }

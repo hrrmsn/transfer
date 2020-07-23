@@ -8,7 +8,7 @@ import (
 )
 
 func NewServer(cfg *utils.Config) *http.Server {
-	routeHandler := handlers.NewRoute(cfg)
+	routeHandler := handlers.NewRouteHandler(cfg)
 
 	mux := http.NewServeMux()
 	mux.Handle("/transfer", routeHandler)

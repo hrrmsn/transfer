@@ -15,15 +15,20 @@ import (
 	"wheely/test/pkg/transfer/utils"
 )
 
-type Route struct {
-	Config        *utils.Config
-	CarsClient    *cars.Client
-	PredictClient *predict.Client
-	Formats       strfmt.Registry
+type RouteHandler struct {
+	Config *utils.Config
+
+	// CarsClient    *cars.Client
+	CarsClient cars.Finder
+
+	// PredictClient *predict.Client
+	PredictClient predict.Predictor
+
+	Formats strfmt.Registry
 }
 
-func NewRoute(cfg *utils.Config) *Route {
-	return &Route{
+func NewRouteHandler(cfg *utils.Config) *RouteHandler {
+	return &RouteHandler{
 		Config:        cfg,
 		CarsClient:    cars.NewClient(cfg),
 		PredictClient: predict.NewClient(cfg),
@@ -31,29 +36,33 @@ func NewRoute(cfg *utils.Config) *Route {
 	}
 }
 
-func (r *Route) GetCars(pos *models.Position) (*cars_ops.GetCarsOK, error) {
-	if r.CarsClient.Unhealthy() {
+func (rh *RouteHandler) GetCars(pos *models.Position) (*cars_ops.GetCarsOK, error) {
+	if !rh.CarsClient.Healthy() {
 		return nil, fmt.Errorf("Cars service is unavailable")
 	}
 
-	carsData, err := r.CarsClient.GetCars(r.Config, pos)
+	carsData, err := rh.CarsClient.GetCars(rh.Config, pos)
 	if err != nil {
 		return nil, utils.WrapError("Error when receiving data from cars service", err)
 	}
 
-	if err = r.CarsClient.Validate(carsData); err != nil {
+	if err = rh.CarsClient.Validate(carsData); err != nil {
 		return nil, utils.WrapError("Cars data is invalid", err)
 	}
 
 	return carsData, nil
 }
 
-func (r *Route) GetPredict(pos *models.Position, carsData *cars_ops.GetCarsOK) (*predict_ops.PredictOK, error) {
-	if r.PredictClient.Unhealthy() {
+func (rh *RouteHandler) GetPredict(
+	pos *models.Position,
+	carsData *cars_ops.GetCarsOK,
+) (*predict_ops.PredictOK, error) {
+
+	if !rh.PredictClient.Healthy() {
 		return nil, fmt.Errorf("Predict service is unavailable")
 	}
 
-	predictData, err := r.PredictClient.GetPredict(r.Config, pos, carsData)
+	predictData, err := rh.PredictClient.GetPredict(rh.Config, pos, carsData)
 	if err != nil {
 		return nil, utils.WrapError("Error when receiving data from predict service", err)
 	}
@@ -61,20 +70,20 @@ func (r *Route) GetPredict(pos *models.Position, carsData *cars_ops.GetCarsOK) (
 	return predictData, nil
 }
 
-func (r *Route) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	pos, err := readPos(req, r.Formats)
+func (rh *RouteHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	pos, err := readPos(req, rh.Formats)
 	if err != nil {
 		utils.HandleError(w, utils.WrapError("Input data error", err), http.StatusInternalServerError)
 		return
 	}
 
-	carsData, err := r.GetCars(pos)
+	carsData, err := rh.GetCars(pos)
 	if err != nil {
 		utils.HandleError(w, err, http.StatusInternalServerError)
 		return
 	}
 
-	predictData, err := r.GetPredict(pos, carsData)
+	predictData, err := rh.GetPredict(pos, carsData)
 	if err != nil {
 		utils.HandleError(w, err, http.StatusInternalServerError)
 		return
