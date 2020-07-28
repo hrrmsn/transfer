@@ -14,7 +14,7 @@ import (
 )
 
 type Predictor interface {
-	GetPredict(*utils.Config, *models.Position, *cars_ops.GetCarsOK) (*predict_ops.PredictOK, error)
+	GetPredict(*models.Position, *cars_ops.GetCarsOK) (*predict_ops.PredictOK, error)
 	Healthy() bool
 }
 
@@ -38,12 +38,7 @@ func NewClient(cfg *utils.Config) *Client {
 	}
 }
 
-func (c *Client) GetPredict(
-	cfg *utils.Config,
-	pos *models.Position,
-	carsData *cars_ops.GetCarsOK,
-) (*predict_ops.PredictOK, error) {
-
+func (c *Client) GetPredict(pos *models.Position, carsData *cars_ops.GetCarsOK) (*predict_ops.PredictOK, error) {
 	predictPositions, err := carsToPositions(carsData, c.Formats)
 	if err != nil {
 		return nil, err
@@ -57,7 +52,7 @@ func (c *Client) GetPredict(
 	params := &predict_ops.PredictParams{
 		PositionList: positionList,
 	}
-	params.WithTimeout(cfg.PredictConfig.Timeout)
+	params.WithTimeout(c.Timeout)
 
 	predictData, err := c.Operations.Predict(params)
 	if err != nil {

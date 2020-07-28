@@ -13,7 +13,7 @@ import (
 )
 
 type Finder interface {
-	GetCars(*utils.Config, *models.Position) (*cars_ops.GetCarsOK, error)
+	GetCars(*models.Position) (*cars_ops.GetCarsOK, error)
 	Validate(*cars_ops.GetCarsOK) error
 	Healthy() bool
 }
@@ -21,8 +21,9 @@ type Finder interface {
 type Client struct {
 	*client.CarsService
 
-	Formats strfmt.Registry
-	Timeout time.Duration
+	Formats   strfmt.Registry
+	Timeout   time.Duration
+	CarsLimit int
 }
 
 func NewClient(cfg *utils.Config) *Client {
@@ -35,16 +36,17 @@ func NewClient(cfg *utils.Config) *Client {
 		CarsService: client.NewHTTPClientWithConfig(strfmt.NewFormats(), transportCfg),
 		Formats:     strfmt.NewFormats(),
 		Timeout:     cfg.CarsConfig.Timeout,
+		CarsLimit:   cfg.CarsConfig.Limit,
 	}
 }
 
-func (c *Client) GetCars(cfg *utils.Config, pos *models.Position) (*cars_ops.GetCarsOK, error) {
+func (c *Client) GetCars(pos *models.Position) (*cars_ops.GetCarsOK, error) {
 	params := &cars_ops.GetCarsParams{
 		Lat:   pos.Lat,
 		Lng:   pos.Lng,
-		Limit: int64(cfg.CarsConfig.Limit),
+		Limit: int64(c.CarsLimit),
 	}
-	params.WithTimeout(cfg.CarsConfig.Timeout)
+	params.WithTimeout(c.Timeout)
 
 	getCarsOK, err := c.Operations.GetCars(params)
 	if err != nil {

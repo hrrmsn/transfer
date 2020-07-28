@@ -41,7 +41,7 @@ func (rh *RouteHandler) GetCars(pos *models.Position) (*cars_ops.GetCarsOK, erro
 		return nil, fmt.Errorf("Cars service is unavailable")
 	}
 
-	carsData, err := rh.CarsClient.GetCars(rh.Config, pos)
+	carsData, err := rh.CarsClient.GetCars(pos)
 	if err != nil {
 		return nil, utils.WrapError("Error when receiving data from cars service", err)
 	}
@@ -62,7 +62,7 @@ func (rh *RouteHandler) GetPredict(
 		return nil, fmt.Errorf("Predict service is unavailable")
 	}
 
-	predictData, err := rh.PredictClient.GetPredict(rh.Config, pos, carsData)
+	predictData, err := rh.PredictClient.GetPredict(pos, carsData)
 	if err != nil {
 		return nil, utils.WrapError("Error when receiving data from predict service", err)
 	}
