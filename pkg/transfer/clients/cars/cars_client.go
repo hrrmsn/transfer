@@ -12,11 +12,11 @@ import (
 	"wheely/test/pkg/transfer/utils"
 )
 
-type Finder interface {
-	GetCars(*models.Position) (*cars_ops.GetCarsOK, error)
-	Validate(*cars_ops.GetCarsOK) error
-	Healthy() bool
-}
+// type Finder interface {
+// 	GetCars(*models.Position) (*cars_ops.GetCarsOK, error)
+// 	Validate(*cars_ops.GetCarsOK) error
+// 	Healthy() bool
+// }
 
 type Client struct {
 	*client.CarsService
@@ -80,8 +80,10 @@ func (c *Client) health() (*cars_ops.HealthOK, error) {
 
 func (c *Client) Healthy() bool {
 	healthData, err := c.health()
+
 	if err != nil && !strings.Contains(err.Error(), "unknown error") {
 		return false
 	}
+
 	return strings.Contains(healthData.Error(), "200") || strings.Contains(healthData.Error(), "healthOK")
 }

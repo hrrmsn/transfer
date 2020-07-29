@@ -18,11 +18,11 @@ import (
 type RouteHandler struct {
 	Config *utils.Config
 
-	// CarsClient    *cars.Client
-	CarsClient cars.Finder
+	CarsClient *cars.Client
+	// CarsClient cars.Finder
 
-	// PredictClient *predict.Client
-	PredictClient predict.Predictor
+	PredictClient *predict.Client
+	// PredictClient predict.Predictor
 
 	Formats strfmt.Registry
 }
