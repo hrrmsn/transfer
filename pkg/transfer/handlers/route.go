@@ -16,13 +16,10 @@ import (
 )
 
 type RouteHandler struct {
-	Config *utils.Config
-
-	CarsClient *cars.Client
-	// CarsClient cars.Finder
-
+	CarsClient    *cars.Client
 	PredictClient *predict.Client
-	// PredictClient predict.Predictor
+
+	Config *utils.Config
 
 	Formats strfmt.Registry
 }
