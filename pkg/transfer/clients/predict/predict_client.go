@@ -13,11 +13,6 @@ import (
 	"wheely/test/pkg/transfer/utils"
 )
 
-// type Predictor interface {
-// 	GetPredict(*models.Position, *cars_ops.GetCarsOK) (*predict_ops.PredictOK, error)
-// 	Healthy() bool
-// }
-
 type Client struct {
 	*client.PredictService
 

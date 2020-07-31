@@ -12,12 +12,6 @@ import (
 	"wheely/test/pkg/transfer/utils"
 )
 
-// type Finder interface {
-// 	GetCars(*models.Position) (*cars_ops.GetCarsOK, error)
-// 	Validate(*cars_ops.GetCarsOK) error
-// 	Healthy() bool
-// }
-
 type Client struct {
 	*client.CarsService
 

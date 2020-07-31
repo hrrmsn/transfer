@@ -97,5 +97,5 @@ func (rh *RouteHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"response": "` + strconv.Itoa(int(minTime)) + `"}`))
+	w.Write([]byte(`{"response": ` + strconv.Itoa(int(minTime)) + `}`))
 }

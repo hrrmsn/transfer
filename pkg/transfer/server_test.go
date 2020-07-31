@@ -1,9 +1,7 @@
 package transfer
 
 import (
-	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,93 +10,221 @@ import (
 	"wheely/test/pkg/transfer/utils"
 )
 
+// mock cars service
 type CarsServerMock struct {
+	Data string
 }
 
 func (csm *CarsServerMock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Println("CarsServiceMock call")
-
 	if r.Method != "GET" {
-		// DEBUG
-		log.Println("only GET request to cars service allowed")
 		return
 	}
 
-	switch r.RequestURI {
+	switch r.URL.Path {
 	case "/fake-eta/cars":
-		lat, lng, limit := r.FormValue("lat"), r.FormValue("lng"), r.FormValue("limit")
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(``))
-
-		// DEBUG
-		log.Printf("lat=%s, lng=%s, limit=%s\n", lat, lng, limit)
-	case "/fake-eta/_health":
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(``))
+		w.Write([]byte(csm.Data))
 	}
 }
 
+// mock predict service
 type PredictServerMock struct {
+	Data string
 }
 
 func (psm *PredictServerMock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Println("PredictServerMock call")
-
 	if r.Method != "POST" {
-		// DEBUG
-		log.Println("only POST requests to predict server allowed")
 		return
 	}
 
-	switch r.RequestURI {
-	case "fake-eta/predict":
+	switch r.URL.Path {
+	case "/fake-eta/predict":
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(``))
-
-		// DEBUG
-		defer r.Body.Close()
-
-		payload, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		log.Println(string(payload))
-	case "/fake-eta/_health":
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(``))
+		w.Write([]byte(psm.Data))
 	}
 }
 
-func TestRoute(t *testing.T) {
-	log.Println("TestRoute started")
+// TestCase struct is a helper
+type TestCase struct {
+	Name string
+	*TestRequest
+	*TestResponse
+}
 
-	carsServiceMock := httptest.NewServer(&CarsServerMock{})
-	predictServiceMock := httptest.NewServer(&PredictServerMock{})
+type TestRequest struct {
+	TransferData string
+	CarsData     string
+	PredictData  string
+}
 
-	defer func() {
-		carsServiceMock.Close()
-		predictServiceMock.Close()
-	}()
+type TestResponse struct {
+	ExpectedStatus int
+	ExpectedResult string // equals or contains
+}
 
+func (tc *TestCase) serverMocks() (*httptest.Server, *httptest.Server) {
+	carsServerMock := httptest.NewServer(&CarsServerMock{Data: tc.CarsData})
+	predictServerMock := httptest.NewServer(&PredictServerMock{Data: tc.PredictData})
+	return carsServerMock, predictServerMock
+}
+
+func (tc *TestCase) config(carsSrvUrl, predictSrvUrl string) *utils.Config {
 	cfgTest, _ := utils.NewConfig()
 
-	cfgTest.CarsConfig.Host = strings.TrimPrefix(carsServiceMock.URL, "http://")
+	cfgTest.CarsConfig.Host = strings.TrimPrefix(carsSrvUrl, "http://")
 	cfgTest.CarsConfig.Schemes = []string{"http"}
 
-	cfgTest.PredictConfig.Host = strings.TrimPrefix(predictServiceMock.URL, "http://")
+	cfgTest.PredictConfig.Host = strings.TrimPrefix(predictSrvUrl, "http://")
 	cfgTest.PredictConfig.Schemes = []string{"http"}
 
+	return cfgTest
+}
+
+func (tc *TestCase) check(
+	resp []byte,
+	rec *httptest.ResponseRecorder,
+	testName string,
+	t *testing.T,
+) bool {
+
+	passed := true
+	if status := rec.Code; status != tc.TestResponse.ExpectedStatus {
+		t.Errorf(
+			"Test '%s': wrong status request: got %d want %d\n",
+			testName,
+			status,
+			tc.TestResponse.ExpectedStatus,
+		)
+		passed = false
+	}
+
+	if result := string(resp); result != tc.TestResponse.ExpectedResult &&
+		!strings.Contains(result, tc.TestResponse.ExpectedResult) {
+
+		t.Errorf(
+			"Test '%s': wrong response: got %s want %s\n",
+			testName,
+			result,
+			tc.TestResponse.ExpectedResult,
+		)
+		passed = false
+	}
+
+	return passed
+}
+
+func (tc *TestCase) run(testName string, t *testing.T) bool {
+	carsServerMock, predictServerMock := tc.serverMocks()
+
+	defer func() {
+		carsServerMock.Close()
+		predictServerMock.Close()
+	}()
+
+	cfgTest := tc.config(carsServerMock.URL, predictServerMock.URL)
+
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/transfer", strings.NewReader(`{"lat": 17.986511, "lng": 63.441092}`))
+	req := httptest.NewRequest("POST", "/transfer", strings.NewReader(tc.TransferData))
 
 	transferServer := NewServer(cfgTest)
 	transferServer.Handler.ServeHTTP(rec, req)
 
+	defer rec.Result().Body.Close()
 	resp, _ := ioutil.ReadAll(rec.Result().Body)
-	fmt.Println("response body -> ", string(resp))
 
-	if status := rec.Code; status != http.StatusOK {
-		t.Errorf("Something wrong: status is %d\n", status)
+	if passed := tc.check(resp, rec, testName, t); passed {
+		return true
+	}
+	return false
+}
+
+// init test cases
+var testCases []*TestCase
+
+func initTestCases() {
+	testCases = make([]*TestCase, 0)
+
+	testCases = append(testCases, &TestCase{
+		Name: "test route handler",
+		TestRequest: &TestRequest{
+			TransferData: `{"lat": 17.986511, "lng": 63.441092}`,
+			CarsData: "[" +
+				`{"id":16,"lat":55.7575429,"lng":37.6135117},` +
+				`{"id":229,"lat":55.74837156167371,"lng":37.61180107665421},` +
+				`{"id":8,"lat":55.7532706,"lng":37.6076902}` +
+				"]",
+			PredictData: `[7,2,3]`,
+		},
+		TestResponse: &TestResponse{
+			ExpectedStatus: http.StatusOK,
+			ExpectedResult: `{"response": 2}`,
+		},
+	})
+
+	testCases = append(testCases, &TestCase{
+		Name: "test invalid input data",
+		TestRequest: &TestRequest{
+			TransferData: `{"lat": -200, "lng": 63.441092}`,
+			CarsData:     `[{"id":16,"lat":55.7575429,"lng":37.6135117}]`,
+			PredictData:  `[7,2,3]`,
+		},
+		TestResponse: &TestResponse{
+			ExpectedStatus: http.StatusInternalServerError,
+			ExpectedResult: `input data error: predict position is invalid`,
+		},
+	})
+
+	testCases = append(testCases, &TestCase{
+		Name: "test cars data invalid",
+		TestRequest: &TestRequest{
+			TransferData: `{"lat": 17.986511, "lng": 63.441092}`,
+			CarsData:     `[{"id":16,"lat":-200,"lng":37.6135117}]`,
+			PredictData:  `[7,2,3]`,
+		},
+		TestResponse: &TestResponse{
+			ExpectedStatus: http.StatusInternalServerError,
+			ExpectedResult: `cars data is invalid`,
+		},
+	})
+
+	testCases = append(testCases, &TestCase{
+		Name: "test receiving cars data error",
+		TestRequest: &TestRequest{
+			TransferData: `{"lat": 17.986511, "lng": 63.441092}`,
+			CarsData:     `[{"id":16,,"lat":55.7575429,"lng":37.6135117}]`,
+			PredictData:  `[7,2,3]`,
+		},
+		TestResponse: &TestResponse{
+			ExpectedStatus: http.StatusInternalServerError,
+			ExpectedResult: `error when receiving data from cars service`,
+		},
+	})
+
+	testCases = append(testCases, &TestCase{
+		Name: "test receiving predict data error",
+		TestRequest: &TestRequest{
+			TransferData: `{"lat": 17.986511, "lng": 63.441092}`,
+			CarsData:     `[{"id":16,"lat":55.7575429,"lng":37.6135117}]`,
+			PredictData:  `[7,2,,3]`,
+		},
+		TestResponse: &TestResponse{
+			ExpectedStatus: http.StatusInternalServerError,
+			ExpectedResult: `error when receiving data from predict service`,
+		},
+	})
+}
+
+// run tests
+func TestRoute(t *testing.T) {
+	initTestCases()
+
+	for _, testCase := range testCases {
+		if passed := testCase.run(testCase.Name, t); passed {
+			t.Logf("Test '%s' is passed\n", testCase.Name)
+		} else {
+			t.Logf("Test '%s' isn't passed\n", testCase.Name)
+		}
 	}
 }
