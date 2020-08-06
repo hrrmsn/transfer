@@ -16,16 +16,16 @@ type Config struct {
 }
 
 type CarsConfig struct {
-	BasePath string        `envconfig:"CARS_BASE_PATH" default:"/fake-eta"`
-	Host     string        `envconfig:"CARS_HOST" default:"dev-api.wheely.com"`
+	BasePath string        `envconfig:"CARS_BASE_PATH" default:"/path"`
+	Host     string        `envconfig:"CARS_HOST" default:"example.com"`
 	Schemes  []string      `envconfig:"CARS_SCHEMES" default:"https"`
 	Timeout  time.Duration `envconfig:"CARS_TIMEOUT" default:"30s"`
 	Limit    int           `envconfig:"CARS_LIMIT" default:"10"`
 }
 
 type PredictConfig struct {
-	BasePath string        `envconfig:"PREDICT_BASE_PATH" default:"/fake-eta"`
-	Host     string        `envconfig:"PREDICT_HOST" default:"dev-api.wheely.com"`
+	BasePath string        `envconfig:"PREDICT_BASE_PATH" default:"/path"`
+	Host     string        `envconfig:"PREDICT_HOST" default:"example.com"`
 	Schemes  []string      `envconfig:"PREDICT_SCHEMES" default:"https"`
 	Timeout  time.Duration `envconfig:"PREDICT_TIMEOUT" default:"30s"`
 }
